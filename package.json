@@ -1,0 +1,23 @@
+{
+  "name": "gql-yoga-playground",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development bun run --watch src/main.ts",
+    "start": "bun run src/main.ts",
+    "check": "biome check src",
+    "check:fix": "biome check --write src",
+    "format": "biome format src",
+    "format:fix": "biome format --write src"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest",
+    "@types/node": "^22.13.11",
+    "cross-env": "^7.0.3",
+    "lefthook": "^1.11.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
