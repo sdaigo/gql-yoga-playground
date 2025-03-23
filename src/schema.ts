@@ -1,4 +1,5 @@
 import type { Comment, Link } from "@prisma/client";
+import { GraphQLError } from "graphql";
 import { createSchema } from "graphql-yoga";
 import type { GraphQLContext } from "./context";
 
@@ -22,7 +23,7 @@ const typeDefinitions = `
 
   type Query {
     info: String!
-    feed: [Link!]!
+    feed(filterNeedle: String, skip: Int, take: Int): [Link!]!
     link(id: ID!): Link
     comment(id: ID!): Comment
   }
@@ -33,14 +34,68 @@ const typeDefinitions = `
   }
 `;
 
+const applyTakeConstraints = (params: {
+  min: number;
+  max: number;
+  value: number;
+}) => {
+  if (params.value < params.min || params.value > params.max) {
+    throw new GraphQLError(
+      `'take' argument value '${params.value}' is outside the valid range of '${params.min}' to '${params.max}'.`,
+    );
+  }
+  return params.value;
+};
+
+const applySkipConstraints = (params: { min: number; value: number }) => {
+  if (params.value < params.min) {
+    throw new GraphQLError(
+      `'skip' argument value '${params.value}' is outside the valid range of '${params.min}'.`,
+    );
+  }
+  return params.value;
+};
+
 /**
  * GraphQL Resolvers: the actual implementation of the schema
  */
 const resolvers = {
   Query: {
     info: () => "This is the API of a Hackernews Clone",
-    feed: async (parent: never, args: never, context: GraphQLContext) => {
-      return await context.prisma.link.findMany();
+    feed: async (
+      parent: never,
+      args: { filterNeedle: string; skip?: number; take?: number },
+      context: GraphQLContext,
+    ) => {
+      const where = args.filterNeedle
+        ? {
+            OR: [
+              {
+                description: { contains: args.filterNeedle },
+              },
+              {
+                url: { contains: args.filterNeedle },
+              },
+            ],
+          }
+        : {};
+
+      const take = applyTakeConstraints({
+        min: 1,
+        max: 100,
+        value: args.take ?? 30,
+      });
+
+      const skip = applySkipConstraints({
+        min: 0,
+        value: args.skip ?? 0,
+      });
+
+      return await context.prisma.link.findMany({
+        where,
+        skip,
+        take,
+      });
     },
     link: async (
       parent: never,
