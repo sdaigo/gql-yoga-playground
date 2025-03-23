@@ -140,12 +140,23 @@ const resolvers = {
       args: Omit<Comment, "id" | "createdAt">,
       context: GraphQLContext,
     ) => {
-      const comment = await context.prisma.comment.create({
-        data: {
-          text: args.text,
-          linkId: args.linkId,
-        },
-      });
+      const comment = await context.prisma.comment
+        .create({
+          data: {
+            text: args.text,
+            linkId: args.linkId,
+          },
+        })
+        .catch((err: unknown) => {
+          if (err instanceof Prisma.PrismaClientKnownRequestError) {
+            return Promise.reject(
+              new GraphQLError(
+                `Cannot post comment on non-existing link with id '${args.linkId}'.`,
+              ),
+            );
+          }
+          return Promise.reject(err);
+        });
 
       return comment;
     },
